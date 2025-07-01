@@ -14,9 +14,9 @@
                 <h2>🎬 MovieMagic</h2>
             </div>
             <div class="nav-menu">
-                <a href="home.html" class="nav-link">Movies</a>
-                <a href="tickets.html" class="nav-link active">My Tickets</a>
-                <a href="login.html" class="nav-link">Logout</a>
+                <a href="{{ url_for('home') }}" class="nav-link">Movies</a>
+                <a href="{{ url_for('tickets') }}" class="nav-link active">My Tickets</a>
+                <a href="{{ url_for('login') }}" class="nav-link">Logout</a>
             </div>
             <div class="nav-user">
                 <span>Welcome, User! 👋</span>

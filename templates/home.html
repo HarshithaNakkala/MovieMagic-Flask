@@ -14,10 +14,10 @@
                 <h2>🎬 MovieMagic</h2>
             </div>
             <div class="nav-menu">
-                <a href="index.html" class="nav-link">Home</a>
-                <a href="home.html" class="nav-link active">Movies</a>
-                <a href="tickets.html" class="nav-link">My Tickets</a>
-                <a href="login.html" class="nav-link">Logout</a>
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('home') }}" class="nav-link active">Movies</a>
+                <a href="{{ url_for('tickets') }}" class="nav-link">My Tickets</a>
+                <a href="{{ url_for('login') }}" class="nav-link">Logout</a>
             </div>
             <div class="nav-user">
                 <span>Welcome, User! 👋</span>
@@ -32,9 +32,10 @@
                 <div class="movies-grid">
                     <div class="movie-card">
                         <div class="movie-poster">
-                            <img src="../static/images/kubera.jpg" alt="Kubera">
+                            <img src="{{ url_for('static', filename='images/kubera.jpg') }}" alt="Kubera">
+
                         </div>
-                        <div class="movie-info">
+                        <div chlass="movie-info">
                             <h3>Kubera</h3>
                             <div class="movie-rating">
                                 <div class="stars">
@@ -58,7 +59,8 @@
 
                     <div class="movie-card">
                         <div class="movie-poster">
-                            <img src="../static/images/The_Dark_Knight.jpg" alt="The Dark Knight">
+                            <img src="{{ url_for('static', filename='images/The_Dark_Knight.jpg') }}" alt="The Dark Knight">
+
                         </div>
                         <div class="movie-info">
                             <h3>The Dark Knight</h3>
@@ -84,7 +86,8 @@
 
                     <div class="movie-card">
                         <div class="movie-poster">
-                            <img src="../static/images/Inception.jpg" alt="Inception">
+                            <img src="{{ url_for('static', filename='images/Inception.jpg') }}" alt="Inception">
+
                         </div>
                         <div class="movie-info">
                             <h3>Inception</h3>
