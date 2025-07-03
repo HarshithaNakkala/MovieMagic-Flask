@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, flash, session
+from flask import Flask, request, render_template, redirect,url_for, flash, session
 import hashlib
 import boto3
 import uuid
@@ -34,7 +34,7 @@ def send_booking_email(email,movie,date,time,seat,booking_id):
 
 @app.route('/about')
 def about():
-    return render_template('about.html')
+    return render_template(url_for('about'))
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -44,11 +44,11 @@ def contact():
         email = request.form['email']
         message = request.form['message']
         flash("Message sent successfully!")
-    return render_template('contact.html')
+    return render_template(url_for('contact'))
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template(url_for('index'))
 
 @app.route('/register',methods=['GET','POST'])
 def register():
@@ -59,7 +59,7 @@ def register():
         users_table.put_item(Item={'Email':email,'Password':password})
         flash("Registration successful! please login.")
         return redirect('/login')
-    return render_template('register.html')
+    return render_template(url_for('register'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -77,20 +77,20 @@ def login():
         else:
             flash('Invalid email or password. Please try again.')
 
-    return render_template('login.html')
+    return render_template(url_for('login'))
 
 @app.route('/home')
 def home():
     if 'user' not in session:
         return redirect('/login')
-    return render_template('home.html',user=session['user'])
+    return render_template(url_for('home'),user=session['user'])
 
 @app.route('/booking',methods=['GET'])
 def booking_page():
     if 'user' not in session:
         return redirect('/login')
     movie=request.args.get('movie')
-    return render_template('booking_form.html',movie=movie)
+    return render_template(url_for('booking_form'),movie=movie)
 
 @app.route('/book',methods=['POST'])
 def book_ticket():
@@ -106,7 +106,7 @@ def book_ticket():
     }
     booking_table.put_item(Item=data)
     send_booking_email(data['Email'],data['Movie'],data['Date'],data['Time'],data['Seat'],data['BookingID'])
-    return render_template('tickets.html',booking=data)
+    return render_template(url_for('tickets'),booking=data)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -117,7 +117,7 @@ def signup():
         users_table.put_item(Item={'Email': email, 'Password': password})
         flash("Registration successful! Please log in.")
         return redirect('/login')
-    return render_template('register.html')
+    return render_template(url_for('register'))
 
 @app.route('/logout')
 def logout():
