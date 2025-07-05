@@ -156,5 +156,8 @@ def book_ticket():
 
 # Run the application
 if __name__ == '__main__':
+<<<<<<< HEAD
     
+=======
+>>>>>>> 11b84ad808a2c50445917e62b0c140d246f90a32
     app.run(host='0.0.0.0', port=5000)
