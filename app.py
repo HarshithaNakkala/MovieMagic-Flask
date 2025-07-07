@@ -5,45 +5,45 @@ import uuid
 import os
 from botocore.exceptions import ClientError
 
+# Flask app setup
 app = Flask(__name__)
-
-# Use a secure secret key for session management
-app.secret_key = os.environ.get('SECRET_KEY', 'your_fallback_secret_key')
+app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-fallback-key')
 
 # AWS Configuration
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:905418361023:MovieTicketNotifications')
 
-# Initialize AWS services
+# Initialize AWS clients
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 sns = boto3.client('sns', region_name=AWS_REGION)
 
-# Define DynamoDB table names
+# DynamoDB tables
 users_table = dynamodb.Table('MovieMagic_Users')
 booking_table = dynamodb.Table('MovieMagic_Bookings')
 
 
-# Send email via SNS
+# SNS Email Notification
 def send_booking_email(email, movie, date, time, seat, booking_id):
     message = f"""
-    🎟️ MovieMagic Booking Confirmed 🎟️
+🎟️ MovieMagic Booking Confirmed 🎟️
 
-    Movie: {movie}
-    Date: {date}
-    Time: {time}
-    Seat: {seat}
-    Booking ID: {booking_id}
+Movie: {movie}
+Date: {date}
+Time: {time}
+Seat: {seat}
+Booking ID: {booking_id}
 
-    Thank you for using MovieMagic!
-    """
+Thank you for using MovieMagic!
+"""
     try:
         sns.publish(
             TopicArn=SNS_TOPIC_ARN,
             Message=message,
             Subject="Your Movie Ticket Booking Confirmation"
         )
+        print(f"SNS email sent to topic for: {email}")
     except ClientError as e:
-        print(f"Failed to send SNS email: {e.response['Error']['Message']}")
+        print(f"❌ SNS Publish Error: {e.response['Error']['Message']}")
 
 
 # Routes
@@ -64,6 +64,7 @@ def contact():
         email = request.form['email']
         message = request.form['message']
         flash("Message sent successfully!", "success")
+        print(f"[Contact] Name: {name}, Email: {email}, Message: {message}")
     return render_template('contact.html')
 
 
@@ -73,14 +74,13 @@ def register():
         email = request.form['email']
         password = hashlib.sha256(request.form['password'].encode()).hexdigest()
 
-        # Store in DynamoDB
         try:
             users_table.put_item(Item={'Email': email, 'Password': password})
             flash("Registration successful! Please login.", "success")
             return redirect(url_for('login'))
         except ClientError as e:
             flash("Registration failed. Try again.", "danger")
-            print(e.response['Error']['Message'])
+            print(f"❌ Registration Error: {e.response['Error']['Message']}")
 
     return render_template('register.html')
 
@@ -103,7 +103,7 @@ def login():
                 flash("Invalid email or password.", "danger")
         except ClientError as e:
             flash("Login failed. Please try again.", "danger")
-            print(e.response['Error']['Message'])
+            print(f"❌ Login Error: {e.response['Error']['Message']}")
 
     return render_template('login.html')
 
@@ -150,11 +150,10 @@ def book_ticket():
         return render_template('tickets.html', booking=data)
     except ClientError as e:
         flash("Booking failed. Try again.", "danger")
-        print(e.response['Error']['Message'])
+        print(f"❌ Booking Error: {e.response['Error']['Message']}")
         return redirect(url_for('booking_page'))
 
 
-# Run the application
+# Entry Point
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
