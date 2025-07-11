@@ -1,72 +1,65 @@
-from flask import Flask, request, render_template, redirect, url_for, flash, session
-import hashlib
-import boto3
+from flask import Flask, render_template, request, redirect, session, flash, url_for
 import uuid
-import os
-from botocore.exceptions import ClientError
+import hashlib
 
-# Flask app setup
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-fallback-key')
+app.secret_key = 'your_secret_key'
 
-# AWS Configuration
-AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:905418361023:MovieTicketNotifications')
+# ------------------------ Mock Databases ------------------------
+mock_users = {}         # { email: hashed_password }
+mock_bookings = []      # list of dicts for bookings
 
-# Initialize AWS clients
-dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-sns = boto3.client('sns', region_name=AWS_REGION)
+mock_movies = {
+    "1": {
+        "title": "Kubera",
+        "image": "kubera.jpg",
+        "rating": "9.2/10",
+        "duration": "3h 13m",
+        "genre": "Crime / Thriller",
+        "price": 145
+    },
+    "2": {
+        "title": "The Dark Knight",
+        "image": "The_Dark_Knight.jpg",
+        "rating": "9.0/10",
+        "duration": "152 minutes",
+        "genre": "Action, Crime, Drama",
+        "price": 150
+    },
+    "3": {
+        "title": "Inception",
+        "image": "inception.jpg",
+        "rating": "8.8/10",
+        "duration": "148 minutes",
+        "genre": "Action, Sci-Fi, Thriller",
+        "price": 155
+    }
+}
 
-# DynamoDB tables
-users_table = dynamodb.Table('MovieMagic_Users')
-booking_table = dynamodb.Table('MovieMagic_Bookings')
+@app.route('/booking')
+def booking_page():
+    if 'user' not in session:
+        return redirect('/login')
+    movie = request.args.get('movie', 'Sample Movie')
+    return render_template('booking_form.html', movie=movie)
 
 
-# SNS Email Notification
-def send_booking_email(email, movie, date, time, seat, booking_id):
-    message = f"""
-🎟️ MovieMagic Booking Confirmed 🎟️
+# ------------------------ Routes ------------------------
 
-Movie: {movie}
-Date: {date}
-Time: {time}
-Seat: {seat}
-Booking ID: {booking_id}
-
-Thank you for using MovieMagic!
-"""
-    try:
-        sns.publish(
-            TopicArn=SNS_TOPIC_ARN,
-            Message=message,
-            Subject="Your Movie Ticket Booking Confirmation"
-        )
-        print(f"SNS email sent to topic for: {email}")
-    except ClientError as e:
-        print(f"❌ SNS Publish Error: {e.response['Error']['Message']}")
-
-
-# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/about')
 def about():
     return render_template('about.html')
 
-
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        message = request.form['message']
-        flash("Message sent successfully!", "success")
-        print(f"[Contact] Name: {name}, Email: {email}, Message: {message}")
     return render_template('contact.html')
 
+
+# ------------------------ Authentication ------------------------
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -74,13 +67,13 @@ def register():
         email = request.form['email']
         password = hashlib.sha256(request.form['password'].encode()).hexdigest()
 
-        try:
-            users_table.put_item(Item={'Email': email, 'Password': password})
-            flash("Registration successful! Please login.", "success")
-            return redirect(url_for('login'))
-        except ClientError as e:
-            flash("Registration failed. Try again.", "danger")
-            print(f"❌ Registration Error: {e.response['Error']['Message']}")
+        if email in mock_users:
+            flash("Email already registered.")
+            return redirect('/register')
+
+        mock_users[email] = password
+        flash("Registered successfully! Please log in.")
+        return redirect('/login')
 
     return render_template('register.html')
 
@@ -91,19 +84,12 @@ def login():
         email = request.form['email']
         password = hashlib.sha256(request.form['password'].encode()).hexdigest()
 
-        try:
-            response = users_table.get_item(Key={'Email': email})
-            user = response.get('Item')
-
-            if user and user.get('Password') == password:
-                session['user'] = email
-                flash("Login successful!", "success")
-                return redirect(url_for('home'))
-            else:
-                flash("Invalid email or password.", "danger")
-        except ClientError as e:
-            flash("Login failed. Please try again.", "danger")
-            print(f"❌ Login Error: {e.response['Error']['Message']}")
+        if mock_users.get(email) == password:
+            session['user'] = email
+            flash("Login successful!")
+            return redirect('/home')
+        else:
+            flash("Invalid credentials.")
 
     return render_template('login.html')
 
@@ -111,31 +97,38 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("Logged out successfully.", "info")
-    return redirect(url_for('login'))
+    flash("Logged out successfully.")
+    return redirect('/login')
 
+
+# ------------------------ Main Pages ------------------------
 
 @app.route('/home')
 def home():
     if 'user' not in session:
-        return redirect(url_for('login'))
-    return render_template('home.html', user=session['user'])
+        return redirect('/login')
+    return render_template('home.html', user=session['user'], movies=mock_movies)
+
+def send_mock_email(email, movie, date, time, seat, booking_id):
+    print(f"""
+    EMAIL SENT TO: {email}
+    Booking Confirmed:
+    Movie: {movie}
+    Date: {date}
+    Time: {time}
+    Seat: {seat}
+    Booking ID: {booking_id}
+    """)
 
 
-@app.route('/booking', methods=['GET'])
-def booking_page():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    movie = request.args.get('movie')
-    return render_template('booking_form.html', movie=movie)
 
 
 @app.route('/book', methods=['POST'])
 def book_ticket():
     if 'user' not in session:
-        return redirect(url_for('login'))
+        return redirect('/login')
 
-    data = {
+    booking = {
         'Email': session['user'],
         'Movie': request.form['movie'],
         'Date': request.form['date'],
@@ -144,16 +137,75 @@ def book_ticket():
         'BookingID': str(uuid.uuid4())
     }
 
-    try:
-        booking_table.put_item(Item=data)
-        send_booking_email(data['Email'], data['Movie'], data['Date'], data['Time'], data['Seat'], data['BookingID'])
-        return render_template('tickets.html', booking=data)
-    except ClientError as e:
-        flash("Booking failed. Try again.", "danger")
-        print(f"❌ Booking Error: {e.response['Error']['Message']}")
-        return redirect(url_for('booking_page'))
+    mock_bookings.append(booking)
+
+    # ✅ Correct function name here
+    send_mock_email(
+        booking['Email'],
+        booking['Movie'],
+        booking['Date'],
+        booking['Time'],
+        booking['Seat'],
+        booking['BookingID']
+    )
+
+    return render_template('tickets.html', booking=booking)
+
+    if 'user' not in session:
+        return redirect('/login')
+    booking = {
+        'Email': session['user'],
+        'Movie': request.form['movie'],
+        'Date': request.form['date'],
+        'Time': request.form['time'],
+        'Seat': request.form['seat'],
+        'BookingID': str(uuid.uuid4())
+    }
+    mock_bookings.append(booking)
+    send_mock_email(booking['Email'], booking['Movie'], booking['Date'], booking['Time'], booking['Seat'], booking['BookingID'])
+    return render_template('tickets.html', booking=booking)
+
+    if 'user' not in session:
+        return redirect('/login')
+
+    movie = request.form['movie']
+    seats = request.form['seats']
+    time = request.form['time']
+    price = 145  # Or fetch based on movie
+
+    booking = {
+        'Email': session['user'],
+        'Movie': movie,
+        'Seat': seats,
+        'Time': time,
+        'Date': '2025-07-01',
+        'BookingID': str(uuid.uuid4())
+    }
+
+    mock_bookings.append(booking)
+
+    print(f"EMAIL SENT TO {booking['Email']}: Movie {booking['Movie']} on {booking['Date']} at {booking['Time']} | Seats: {booking['Seat']}")
+
+    flash("Booking successful!")
+    return redirect('/tickets')
 
 
-# Entry Point
+@app.route('/tickets')
+def tickets():   # ✅ This matches the HTML now
+    if 'user' not in session:
+        return redirect('/login')
+
+    user_bookings = [b for b in mock_bookings if b['Email'] == session['user']]
+    if not user_bookings:
+        flash("No bookings found.")
+        return redirect('/home')
+
+    return render_template('tickets.html', booking=user_bookings[-1])
+
+
+
+
+# ------------------------ Run App ------------------------
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
